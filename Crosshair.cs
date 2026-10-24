@@ -387,12 +387,14 @@ class Overlay : Form
     }
 
     [STAThread]
-    static void Main(string[] args)
+    static void Main(string[] args) { Run(args.Length > 0 && args[0] == "-hidden"); }
+
+    static void Run(bool hidden)
     {
         Application.EnableVisualStyles();
         var o = new Overlay();
         o.Start();
-        if (args.Length == 0 || args[0] != "-hidden") o.ShowSettings(0);
+        if (!hidden) o.ShowSettings(0);
         Application.Run();
     }
 }
