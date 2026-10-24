@@ -221,7 +221,8 @@ class Overlay : Form
         m.Items.Add("Settings...", null, (s, e) => ShowSettings(0));
         m.Items.Add("Toggle (Ctrl+Alt+X)", null, (s, e) => Toggle());
         m.Items.Add("Exit", null, (s, e) => { tray.Visible = false; Application.Exit(); });
-        Icon = AppIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        string ico = Environment.GetEnvironmentVariable("CROSSHAIR_ICON");
+        Icon = AppIcon = (ico != null && File.Exists(ico)) ? new Icon(ico) : Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         tray = new NotifyIcon { Icon = AppIcon, Text = "Crosshair Lite", ContextMenuStrip = m, Visible = true };
         tray.DoubleClick += (s, e) => ShowSettings(0);
         fsTimer.Tick += (s, e) => Evaluate();

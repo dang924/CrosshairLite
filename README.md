@@ -24,3 +24,6 @@ Free code signing provided by [SignPath.io](https://about.signpath.io/), certifi
 
 ## License
 MIT, see [LICENSE](LICENSE).
+
+## Running under Smart App Control
+Unsigned exes are blocked by Smart App Control. Run the source directly instead: double-click the 'Crosshair Lite' shortcut (or run CrosshairLite.ps1), which compiles Crosshair.cs in memory using Windows PowerShell.
