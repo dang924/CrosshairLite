@@ -163,7 +163,7 @@ static class Startup
     {
         string script = Environment.GetEnvironmentVariable("CROSSHAIR_SCRIPT");
         if (!string.IsNullOrEmpty(script))
-            return "\"" + Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe") + "\" -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File \"" + script + "\" -hidden";
+            return "\"" + Path.Combine(Environment.SystemDirectory, "conhost.exe") + "\" --headless \"" + Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe") + "\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"" + script + "\" -hidden";
         return "\"" + Application.ExecutablePath + "\" -hidden";
     }
 
@@ -261,6 +261,14 @@ class Overlay : Form
         fsTimer.Tick += (s, e) => Evaluate();
     }
 
+    [DllImport("psapi.dll")] static extern bool EmptyWorkingSet(IntPtr proc);
+    // Drops compiler/startup pages (matters most in script mode); Windows pages back in only what's used.
+    public static void TrimMemory()
+    {
+        GC.Collect(); GC.WaitForPendingFinalizers();
+        EmptyWorkingSet(Process.GetCurrentProcess().Handle);
+    }
+
     public void Start()
     {
         ready = true;
@@ -268,7 +276,10 @@ class Overlay : Form
         hook = SetWinEventHook(3, 3, IntPtr.Zero, hookProc, 0, 0, 0); // EVENT_SYSTEM_FOREGROUND
         Show();
         Evaluate();
+        Application.Idle += TrimOnce;
     }
+
+    void TrimOnce(object s, EventArgs e) { Application.Idle -= TrimOnce; TrimMemory(); }
 
     void Toggle() { userOn = !userOn; Evaluate(); }
 
@@ -461,7 +472,7 @@ class SettingsForm : Form
 
         BuildCrosshair(t1); BuildApps(t2); BuildPresets(t3); BuildGeneral(t4);
         tabs.SelectedIndex = Math.Max(0, Math.Min(3, tab));
-        FormClosed += (s, e) => { ov.S.Save(); Dispose(); };
+        FormClosed += (s, e) => { ov.S.Save(); Dispose(); Overlay.TrimMemory(); };
     }
 
     void Begin(Control page) { cur = page; y = 12; }
