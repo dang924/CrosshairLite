@@ -154,6 +154,39 @@ static class Code
     }
 }
 
+static class Startup
+{
+    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run", ValueName = "CrosshairLite";
+
+    // Script mode (Smart App Control friendly) is detected via the env var set by CrosshairLite.ps1.
+    static string Command()
+    {
+        string script = Environment.GetEnvironmentVariable("CROSSHAIR_SCRIPT");
+        if (!string.IsNullOrEmpty(script))
+            return "\"" + Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe") + "\" -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File \"" + script + "\" -hidden";
+        return "\"" + Application.ExecutablePath + "\" -hidden";
+    }
+
+    public static bool IsEnabled()
+    {
+        using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey))
+            return k != null && k.GetValue(ValueName) != null;
+    }
+
+    public static bool Set(bool on)
+    {
+        try
+        {
+            using (var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey))
+            {
+                if (on) k.SetValue(ValueName, Command()); else k.DeleteValue(ValueName, false);
+            }
+            return true;
+        }
+        catch { return false; }
+    }
+}
+
 static class Presets
 {
     static string FilePath { get { return Path.Combine(Settings.Dir, "CrosshairLite.presets"); } }
@@ -419,15 +452,15 @@ class SettingsForm : Form
         Font = new Font("Segoe UI", 9);
 
         tabs = new TabControl { Dock = DockStyle.Top, Height = 486 };
-        var t1 = new TabPage("Crosshair"); var t2 = new TabPage("Apps"); var t3 = new TabPage("Presets");
-        tabs.TabPages.AddRange(new[] { t1, t2, t3 });
+        var t1 = new TabPage("Crosshair"); var t2 = new TabPage("Apps"); var t3 = new TabPage("Presets"); var t4 = new TabPage("General");
+        tabs.TabPages.AddRange(new[] { t1, t2, t3, t4 });
         Controls.Add(tabs);
         var close = new Button { Text = "Close", Left = 250, Top = 494, Width = 95 };
         close.Click += (s, e) => Close();
         Controls.Add(close);
 
-        BuildCrosshair(t1); BuildApps(t2); BuildPresets(t3);
-        tabs.SelectedIndex = Math.Max(0, Math.Min(2, tab));
+        BuildCrosshair(t1); BuildApps(t2); BuildPresets(t3); BuildGeneral(t4);
+        tabs.SelectedIndex = Math.Max(0, Math.Min(3, tab));
         FormClosed += (s, e) => { ov.S.Save(); Dispose(); };
     }
 
@@ -576,6 +609,21 @@ class SettingsForm : Form
         };
         load.Click += (s, e) => { if (list.SelectedItem != null) apply(presets[(string)list.SelectedItem]); };
         go.Click += (s, e) => apply(imp.Text);
+    }
+
+    void BuildGeneral(TabPage p)
+    {
+        Begin(p);
+        var cb = new CheckBox { Text = "Start with Windows (hidden in tray)", Left = 12, Top = y, Width = 330, Checked = Startup.IsEnabled() };
+        var msg = new Label { Left = 12, Top = y + 56, Width = 330, Height = 40, ForeColor = SystemColors.GrayText };
+        cb.CheckedChanged += (s, e) =>
+        {
+            if (Startup.Set(cb.Checked)) { msg.Text = ""; return; }
+            msg.Text = "Couldn't update the startup entry.";
+        };
+        cur.Controls.Add(cb);
+        cur.Controls.Add(new Label { Left = 12, Top = y + 28, Width = 330, Height = 26, ForeColor = SystemColors.GrayText, Text = "Launches only for your user account; no admin rights needed." });
+        cur.Controls.Add(msg);
     }
 
     // Rebuild the window so every control reflects the new settings.
