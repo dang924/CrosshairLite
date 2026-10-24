@@ -1,0 +1,25 @@
+name: build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        shell: pwsh
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /target:winexe /optimize /win32icon:icon.ico /out:CrosshairLite.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll Crosshair.cs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: CrosshairLite-unsigned
+          path: CrosshairLite.exe
+      # After SignPath approves the project, add the signpath/github-action-submit-signing-request step here,
+      # using the artifact id above and your organization/project/policy slugs.
